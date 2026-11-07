@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#f4f7ff" />
+  <meta name="description" content="式をタップすると答えが表示される、家族で使える掛け算カードです。" />
+  <title>掛け算カード</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" type="image/png" href="./icon-192.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="掛け算カード" />
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+      --ink: #1c2c4b;
+      --muted: #6b7892;
+      --blue: #3465de;
+      --blue-dark: #214db8;
+      --stroke: #dce5f4;
+      --surface: #ffffff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      min-height: 100dvh;
+      margin: 0;
+      background: radial-gradient(circle at 5% 5%, #e4eeff, transparent 42%), #f6f8fd;
+      color: var(--ink);
+    }
+    .app {
+      width: min(100%, 580px);
+      margin: 0 auto;
+      padding: max(22px, env(safe-area-inset-top)) 18px max(28px, env(safe-area-inset-bottom));
+    }
+    header { text-align: center; margin: 2px 0 27px; }
+    .mark {
+      width: 48px; height: 48px; display: grid; place-items: center;
+      border-radius: 16px; background: #e0ebff; color: var(--blue);
+      margin: 0 auto 12px; font-weight: 900; font-size: 30px;
+    }
+    h1 { font-size: clamp(26px, 7vw, 33px); margin: 0 0 8px; letter-spacing: .04em; }
+    .intro { font-size: 13px; color: var(--muted); margin: 0; line-height: 1.8; }
+    .setting {
+      display: flex; gap: 14px; align-items: center; justify-content: space-between;
+      background: var(--surface); padding: 14px 15px; border: 1px solid var(--stroke);
+      border-radius: 16px; box-shadow: 0 4px 20px rgba(31,53,94,.035);
+    }
+    label { font-size: 14px; font-weight: 750; white-space: nowrap; }
+    select {
+      min-width: 0; max-width: 67%; padding: 12px 35px 12px 12px;
+      border: 1px solid #d2dcec; border-radius: 11px;
+      background: #fff; color: var(--ink); font: inherit; font-size: 14px;
+    }
+    .progress {
+      display: flex; justify-content: space-between; gap: 10px;
+      padding: 21px 3px 13px; font-size: 14px; color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .progress strong { font-size: 17px; color: var(--ink); }
+    .card {
+      width: 100%; min-height: clamp(280px, 42dvh, 400px); padding: 28px 12px;
+      border: 2px solid #d9e5fb; border-radius: 26px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: #fff; box-shadow: 0 16px 35px rgba(37,80,148,.10);
+      font: inherit; color: var(--ink); cursor: pointer; user-select: none;
+      touch-action: manipulation; transition: background .16s ease, transform .1s ease;
+    }
+    .card:active { transform: scale(.992); }
+    .card.show-answer { background: #eaf2ff; }
+    .card-mode { font-size: 13px; font-weight: 750; letter-spacing: .17em; color: var(--muted); }
+    .formula {
+      margin: 28px 0; white-space: nowrap;
+      font-size: clamp(42px, 10.3vw, 73px); font-weight: 850; letter-spacing: -.035em;
+      font-variant-numeric: tabular-nums; line-height: 1.17;
+    }
+    .card-tip { font-size: 13px; color: var(--muted); }
+    .actions { display: grid; grid-template-columns: 1fr 1.3fr; gap: 12px; margin-top: 18px; }
+    button { -webkit-tap-highlight-color: transparent; }
+    .action {
+      min-height: 64px; border-radius: 16px; font: inherit; font-size: 20px; font-weight: 800;
+      cursor: pointer; touch-action: manipulation;
+    }
+    .back { background: #e6edf9; border: 1px solid #d0dbee; color: #264267; }
+    .back:disabled { opacity: .40; cursor: default; }
+    .next { background: var(--blue); color: white; border: 1px solid var(--blue-dark); box-shadow: 0 7px 16px rgba(52,101,222,.25); }
+    .reset {
+      display: block; width: 100%; margin-top: 17px; min-height: 48px; border-radius: 13px;
+      background: transparent; border: 1px solid var(--stroke); color: var(--muted);
+      font: inherit; font-size: 14px; cursor: pointer;
+    }
+    .footnote { text-align: center; color: var(--muted); line-height: 1.8; font-size: 12px; margin: 16px 5px 0; }
+    button:focus-visible, select:focus-visible { outline: 3px solid #82aaff; outline-offset: 3px; }
+    @media (max-width: 390px) { .app { padding-left: 13px; padding-right: 13px; } .actions { gap: 9px; } .formula { font-size: clamp(36px, 10.2vw, 60px); } }
+    @media (prefers-reduced-motion: reduce) { .card { transition: none; } }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div class="mark" aria-hidden="true">×</div>
+      <h1>掛け算カード</h1>
+      <p class="intro">式をタップすると答えが見られます。<br>もう一度タップすると問題に戻ります。</p>
+    </header>
+
+    <section class="setting" aria-label="出題設定">
+      <label for="type">問題の種類</label>
+      <select id="type">
+        <option value="1x1">1桁 × 1桁</option>
+        <option value="1x2">1桁 × 2桁</option>
+        <option value="2x1">2桁 × 1桁</option>
+        <option value="2x2" selected>2桁 × 2桁</option>
+        <option value="3x1">3桁 × 1桁</option>
+        <option value="3x2">3桁 × 2桁</option>
+        <option value="mix">ミックス（1〜2桁）</option>
+      </select>
+    </section>
+
+    <div class="progress" aria-live="polite" aria-atomic="true">
+      <span>現在 <strong id="current">1</strong> 問目</span>
+      <span>出題済み <strong id="count">1</strong> 問</span>
+    </div>
+
+    <button class="card" id="card" type="button" aria-label="答えを表示" aria-pressed="false">
+      <span class="card-mode" id="cardMode">もんだい</span>
+      <span class="formula" id="formula">12 × 34</span>
+      <span class="card-tip" id="cardTip">タップで答えを表示</span>
+    </button>
+
+    <div class="actions">
+      <button class="action back" type="button" id="back" disabled>← 戻る</button>
+      <button class="action next" type="button" id="next">次へ →</button>
+    </div>
+    <button class="reset" id="reset" type="button">問題数をリセット</button>
+    <p class="footnote">「戻る」で前の問題へ戻れます。<br>戻った後の「次へ」は、前と同じ問題を表示します。</p>
+  </main>
+
+  <script>
+    (() => {
+      'use strict';
+      const el = id => document.getElementById(id);
+      const type = el('type');
+      const card = el('card');
+      const formula = el('formula');
+      const cardMode = el('cardMode');
+      const cardTip = el('cardTip');
+      const back = el('back');
+      const next = el('next');
+      const reset = el('reset');
+      const current = el('current');
+      const count = el('count');
+
+      let questions = [];
+      let at = 0;
+      let revealed = false;
+
+      const random = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+      function bounds(selection) {
+        switch (selection) {
+          case '1x1': return [[1, 9], [1, 9]];
+          case '1x2': return [[1, 9], [10, 99]];
+          case '2x1': return [[10, 99], [1, 9]];
+          case '3x1': return [[100, 999], [1, 9]];
+          case '3x2': return [[100, 999], [10, 99]];
+          case 'mix': return [random(0, 1) ? [10, 99] : [1, 9], random(0, 1) ? [10, 99] : [1, 9]];
+          default: return [[10, 99], [10, 99]];
+        }
+      }
+      function createQuestion() {
+        let item;
+        const previous = questions.length ? questions[questions.length - 1] : null;
+        for (let i = 0; i < 30; i += 1) {
+          const [left, right] = bounds(type.value);
+          const a = random(left[0], left[1]);
+          const b = random(right[0], right[1]);
+          item = { a, b, result: a * b };
+          if (!previous || previous.a !== a || previous.b !== b) break;
+        }
+        return item;
+      }
+      function update() {
+        const q = questions[at];
+        if (!q) return;
+        formula.textContent = revealed ? String(q.result) : `${q.a} × ${q.b}`;
+        cardMode.textContent = revealed ? 'こたえ' : 'もんだい';
+        cardTip.textContent = revealed ? 'もう一度タップで問題に戻る' : 'タップで答えを表示';
+        card.classList.toggle('show-answer', revealed);
+        card.setAttribute('aria-label', revealed ? '問題を表示' : '答えを表示');
+        card.setAttribute('aria-pressed', String(revealed));
+        current.textContent = at + 1;
+        count.textContent = questions.length;
+        back.disabled = at === 0;
+      }
+      function startOver() {
+        questions = [];
+        at = 0;
+        revealed = false;
+        questions.push(createQuestion());
+        update();
+      }
+      function moveBack() {
+        if (at === 0) return;
+        at -= 1;
+        revealed = false;
+        update();
+      }
+      function moveNext() {
+        if (at === questions.length - 1) questions.push(createQuestion());
+        at += 1;
+        revealed = false;
+        update();
+      }
+
+      card.addEventListener('click', () => { revealed = !revealed; update(); });
+      back.addEventListener('click', moveBack);
+      next.addEventListener('click', moveNext);
+      reset.addEventListener('click', startOver);
+      type.addEventListener('change', startOver);
+      document.addEventListener('keydown', event => {
+        if (event.target === type || event.altKey || event.ctrlKey || event.metaKey) return;
+        if (event.key === 'ArrowLeft') { event.preventDefault(); moveBack(); }
+        if (event.key === 'ArrowRight') { event.preventDefault(); moveNext(); }
+      });
+      startOver();
+    })();
+  </script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {
+          // Service workers may be unavailable in local file previews.
+        });
+      });
+    }
+  </script>
+</body>
+</html>
